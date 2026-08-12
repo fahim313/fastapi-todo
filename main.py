@@ -1,9 +1,10 @@
 from fastapi import FastAPI,Depends,HTTPException
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 import models
 from models import Todos
 from database import engine,SessionLocal
-from typing import Annotated
+from typing import Annotated,Optional
 from pydantic import BaseModel,Field
 
 
@@ -17,6 +18,12 @@ class TODO(BaseModel):
     complete: bool
     
 
+class TodoUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=3, max_length=50)
+    description: Optional[str] = Field(default=None, max_length=100)
+    priority: Optional[int] = Field(default=None, ge=1, le=5)
+    complete: Optional[bool] = Field(default=None)
+    
 # Create database tables
 models.Base.metadata.create_all(bind=engine)
 
@@ -61,3 +68,28 @@ def create_todos(db: db_dependency, new_todo: TODO):
         "message": "Todo successfully added",
         "todo": todo_model
     }
+    
+    # Update 
+
+@app.put("/update/{todo_id}")
+def update_todos(db: db_dependency, todo_id: int, update_todo: TodoUpdate):
+
+    todo = db.query(Todos).filter(Todos.id == todo_id).first()
+
+    if todo is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Todo not found"
+        )
+
+    update_data = update_todo.model_dump(exclude_unset=True)
+
+    for key, value in update_data.items():
+        setattr(todo, key, value)
+
+    db.commit()
+
+    return JSONResponse(
+        status_code=200,
+        content={"message": "Todo updated successfully"}
+    ) 
