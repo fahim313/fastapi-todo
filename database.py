@@ -5,7 +5,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 
 
 # SQLite database URL
-SQLALCHEMY_DATABASE_URL = "sqlite:///./todosapp.db"
+SQLALCHEMY_DATABASE_URL = "sqlite:///./todoapp.db"
 
 
 # Create database engine
