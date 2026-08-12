@@ -56,6 +56,8 @@ def get_specific_todo(db: db_dependency, todo_id: int):
 
     return todo
 
+# create
+
 @app.post("/create", status_code=201)
 def create_todos(db: db_dependency, new_todo: TODO):
     todo_model = Todos(**new_todo.model_dump())
@@ -93,3 +95,25 @@ def update_todos(db: db_dependency, todo_id: int, update_todo: TodoUpdate):
         status_code=200,
         content={"message": "Todo updated successfully"}
     ) 
+    
+    # Delete 
+    
+@app.delete("/delete/{todo_id}")
+def delete_todo(db: db_dependency, todo_id: int):
+
+    todo = db.query(Todos).filter(Todos.id == todo_id).first()
+
+    if todo is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Todo not found"
+        )
+
+    db.query(Todos).filter(Todos.id == todo_id).delete()
+
+    db.commit()
+
+    return JSONResponse(
+        status_code=200,
+        content={"message": "Todo deleted successfully"}
+    )    
