@@ -6,7 +6,7 @@ from models import Todos
 from database import engine,SessionLocal
 from typing import Annotated,Optional
 from pydantic import BaseModel,Field
-
+from router import auth
 
 app = FastAPI()
 
@@ -26,6 +26,9 @@ class TodoUpdate(BaseModel):
     
 # Create database tables
 models.Base.metadata.create_all(bind=engine)
+
+# Connect auth router with the main app
+app.include_router(auth.router)
 
 
 def get_db():

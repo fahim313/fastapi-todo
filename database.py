@@ -13,8 +13,7 @@ engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
     connect_args={"check_same_thread": False}
 )
-
-
+ 
 # Create a local database session
 SessionLocal = sessionmaker(
     autocommit=False,
