@@ -6,9 +6,9 @@ from sqlalchemy.orm import Session
 from typing import Annotated 
 from database import SessionLocal
 from fastapi.responses import JSONResponse
-from fastapi.security import OAuth2PasswordRequestForm 
-
-
+from fastapi.security import OAuth2PasswordRequestForm,OAuth2PasswordBearer 
+from jose import jwt, JWTError
+from datetime import timedelta, datetime, timezone
 
 
 router = APIRouter()
@@ -17,6 +17,12 @@ bcrypt_context = CryptContext(
      schemes=["bcrypt"],
     deprecated="auto"
 )
+OAuth2_bearer= OAuth2PasswordBearer(tokenUrl='login')
+
+SECRET_KEY= "90bd98bb80e7140953d027984e41577e3a26242bc74f1ce24c3de21fec5b5510" 
+
+ALGORITHM = "HS256"
+
 def get_db():
     db = SessionLocal()
     try:
@@ -43,6 +49,35 @@ def authenticate_user(username: str, password: str, db: Session):
         return False
 
     return user
+
+def create_access_token(username: str, user_id: int, role: str, expires_delta: timedelta):
+    encode = {"sub": username, "id": user_id, "role": role}
+    expires = datetime.now(timezone.utc) + expires_delta
+    encode.update({"exp": expires})
+    return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def get_current_user(token: Annotated[str, Depends(OAuth2_bearer)]):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get('sub')
+        user_id: int = payload.get('id')
+        role: str = payload.get('role')
+
+        if username is None or user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate user"
+            )
+
+        return {'username': username, 'id': user_id, 'role': role}
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate user"
+        )
+
+    
+
 
 @router.post("/createuser")
 def create_users(db:db_dependency,new_user: CreateUsers):
