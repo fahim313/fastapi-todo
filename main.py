@@ -6,7 +6,7 @@ from models import Todos
 from database import engine,SessionLocal
 from typing import Annotated, Optional
 from pydantic import BaseModel,Field
-from router import auth
+from router import auth,admin
 from router.auth import get_current_user
 app = FastAPI()
 
@@ -30,6 +30,7 @@ models.Base.metadata.create_all(bind=engine)
 # Connect auth router with the main app
 app.include_router(auth.router)
 
+app.include_router(admin.router)
 
 def get_db():
     db = SessionLocal()
