@@ -4,10 +4,10 @@ from sqlalchemy.orm import Session
 import models
 from models import Todos
 from database import engine,SessionLocal
-from typing import Annotated,Optional
+from typing import Annotated, Optional
 from pydantic import BaseModel,Field
 from router import auth
-
+from router.auth import get_current_user
 app = FastAPI()
 
 
@@ -40,16 +40,21 @@ def get_db():
 
 db_dependency = Annotated[Session,Depends(get_db)]
 
+user_dependency = Annotated[dict, Depends(get_current_user)]
+
 # Get all 
 @app.get("/")
-def get_todos(db:db_dependency):
-   return db.query(Todos).all()
+def get_todos(user: user_dependency,db:db_dependency):
+   return db.query(Todos).filter(Todos.owner_id == user.get('id')).all()
 
 # Get specific
 @app.get("/todo/{todo_id}")
-def get_specific_todo(db: db_dependency, todo_id: int):
+def get_specific_todo(user: user_dependency,db: db_dependency, todo_id: int):
+    
+    if user is None:
+        raise HTTPException(status_code=401,detail="Faild Authenticaiton")
 
-    todo = db.query(Todos).filter(Todos.id == todo_id).first()
+    todo = db.query(Todos).filter(Todos.id == todo_id).filter(Todos.owner_id == user.get('id')).filter(Todos.id==todo_id).first()
 
     if todo is None:
         raise HTTPException(
@@ -62,8 +67,12 @@ def get_specific_todo(db: db_dependency, todo_id: int):
 # create
 
 @app.post("/create", status_code=201)
-def create_todos(db: db_dependency, new_todo: TODO):
-    todo_model = Todos(**new_todo.model_dump())
+def create_todos(user: user_dependency, db: db_dependency, new_todo: TODO):
+    
+    if user is None:
+        raise HTTPException(status_code=401, detail="Failed Authentication")
+    
+    todo_model = Todos(**new_todo.model_dump(),owner_id=user.get('id'))
 
     db.add(todo_model)
     db.commit()
@@ -77,9 +86,12 @@ def create_todos(db: db_dependency, new_todo: TODO):
     # Update 
 
 @app.put("/update/{todo_id}")
-def update_todos(db: db_dependency, todo_id: int, update_todo: TodoUpdate):
+def update_todos(user: user_dependency, db: db_dependency, todo_id: int, update_todo: TodoUpdate):
 
-    todo = db.query(Todos).filter(Todos.id == todo_id).first()
+    if user is None:
+        raise HTTPException(status_code=401, detail="Failed Authentication")
+
+    todo = db.query(Todos).filter(Todos.owner_id == user.get('id')).filter(Todos.id == todo_id).first()
 
     if todo is None:
         raise HTTPException(
@@ -97,14 +109,17 @@ def update_todos(db: db_dependency, todo_id: int, update_todo: TodoUpdate):
     return JSONResponse(
         status_code=200,
         content={"message": "Todo updated successfully"}
-    ) 
+    )
     
     # Delete 
     
 @app.delete("/delete/{todo_id}")
-def delete_todo(db: db_dependency, todo_id: int):
+def delete_todo(user: user_dependency, db: db_dependency, todo_id: int):
 
-    todo = db.query(Todos).filter(Todos.id == todo_id).first()
+    if user is None:
+        raise HTTPException(status_code=401, detail="Failed Authentication")
+
+    todo = db.query(Todos).filter(Todos.owner_id == user.get('id')).filter(Todos.id == todo_id).first()
 
     if todo is None:
         raise HTTPException(
@@ -112,11 +127,11 @@ def delete_todo(db: db_dependency, todo_id: int):
             detail="Todo not found"
         )
 
-    db.query(Todos).filter(Todos.id == todo_id).delete()
+    db.query(Todos).filter(Todos.owner_id == user.get('id')).filter(Todos.id == todo_id).delete()
 
     db.commit()
 
     return JSONResponse(
         status_code=200,
         content={"message": "Todo deleted successfully"}
-    )    
+    )  

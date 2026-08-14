@@ -100,7 +100,6 @@ def create_users(db:db_dependency,new_user: CreateUsers):
     content={"message": "User created successfully"}
 ) 
     
-
 @router.post("/login")
 def login_user(db: db_dependency, form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     user = authenticate_user(form_data.username, form_data.password, db)
@@ -111,5 +110,11 @@ def login_user(db: db_dependency, form_data: Annotated[OAuth2PasswordRequestForm
             detail="Username or password is incorrect"
         )
 
-    return {"message": "Authenticated User", "username": user.username}
-    
+    token = create_access_token(
+        username=user.username,
+        user_id=user.id,
+        role=user.role,
+        expires_delta=timedelta(minutes=20)
+    )
+
+    return {"access_token": token, "token_type": "bearer"}
