@@ -37,7 +37,7 @@ class UserResponse(BaseModel):
     firstname: str
     lastname: str
     role: str
-  
+    phone_number: Optional[str] = None
 
     class Config:
         from_attributes = True
