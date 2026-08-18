@@ -2,12 +2,17 @@ from fastapi import FastAPI,Depends,HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 import models
-from models import Todos
+from models import Todos,Users
 from database import engine,SessionLocal
 from typing import Annotated, Optional
 from pydantic import BaseModel,Field
 from router import auth,admin
 from router.auth import get_current_user
+
+
+
+
+
 app = FastAPI()
 
 
@@ -23,6 +28,21 @@ class TodoUpdate(BaseModel):
     description: Optional[str] = Field(default=None, max_length=100)
     priority: Optional[int] = Field(default=None, ge=1, le=5)
     complete: Optional[bool] = Field(default=None)
+
+
+class UserResponse(BaseModel):
+    id: int
+    email: str
+    username: str
+    firstname: str
+    lastname: str
+    role: str
+  
+
+    class Config:
+        from_attributes = True
+    
+    
     
 # Create database tables
 models.Base.metadata.create_all(bind=engine)
@@ -136,3 +156,16 @@ def delete_todo(user: user_dependency, db: db_dependency, todo_id: int):
         status_code=200,
         content={"message": "Todo deleted successfully"}
     )  
+
+
+@app.get("/users/me", response_model=UserResponse)
+def get_user(user: user_dependency, db: db_dependency):
+    if user is None:
+        raise HTTPException(status_code=401, detail="Failed Authentication")
+
+    user_model = db.query(Users).filter(Users.id == user.get('id')).first()
+
+    if user_model is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return user_model    
